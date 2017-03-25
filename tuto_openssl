@@ -678,7 +678,7 @@ Generating RSA private key, 4096 bit long modulus
 ......++
 ......................++
 e is 65537 (0x10001)
-Enter pass phrase for aeskey: rsaes
+Enter pass phrase for aeskey: 
 Verifying - Enter pass phrase for aeskey:
 
 blue@saturn:~/SSL/keys-$ file *
@@ -752,9 +752,9 @@ blue@saturn:~/SSL/keys-$
 ##
 
 blue@saturn:~/SSL/keys-$ openssl rsa -aes256 -in aeskey -out newaeskey
-Enter pass phrase for aeskey: rsaes
+Enter pass phrase for aeskey:
 writing RSA key
-Enter PEM pass phrase: newa
+Enter PEM pass phrase:
 Verifying - Enter PEM pass phrase:
 blue@saturn:~/SSL/keys-$ ll
 total 20
@@ -857,7 +857,7 @@ Generating RSA private key, 4096 bit long modulus
 .................++
 ..........++
 e is 65537 (0x10001)
-Enter pass phrase for xkey: xkey
+Enter pass phrase for xkey:
 Verifying - Enter pass phrase for xkey:
 blue@saturn:~/SSL/x509-$ 
 blue@saturn:~/SSL/x509-$ chmod 400 xkey 
