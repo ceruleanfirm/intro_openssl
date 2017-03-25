@@ -1,0 +1,1800 @@
+
+
+
+ #####   ######   #######  #     #   #####    #####   #        
+#     #  #     #  #        ##    #  #     #  #     #  #        
+#     #  #     #  #        # #   #  #        #        #        
+#     #  ######   #####    #  #  #   #####    #####   #        
+#     #  #        #        #   # #        #        #  #        
+#     #  #        #        #    ##  #     #  #     #  #        
+ #####   #        #######  #     #   #####    #####   #######  
+
+
+
+
+# ALGORITHMES SYMÉTRIQUES #
+
+- Méthodes à codage de flux : rc4 , arcfour ...
+
+- Méthodes à codage de blocs : DES , AES , IDEA , 3DES , Blowfish , Cast ...
+	Méthode CBC (Cipher Bloc Chaining) un bloc Initial Vector (IV) est utilisé comme "référent" pour chiffrer les autres blocs
+
+
+
+# On chiffre un fichier en des #
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -k mdp
+blue@saturn:~/SSL-$ ll
+total 836
+-rw-r--r--. 1 blue blue 840289 19 mars  12:10 cmd
+-rw-r--r--. 1 blue blue    747 22 mars  09:19 cmd_openssl
+-rw-r--r--. 1 blue blue     40 22 mars  09:21 user
+-rw-r--r--. 1 blue blue     64 22 mars  09:23 user.dat
+blue@saturn:~/SSL-$ cat user.dat 
+Salted__z...blue@saturn:~/SSL-$ 
+
+# On déchiffre le fichier.dat # 
+
+blue@saturn:~/SSL-$ openssl des -d -in user.dat -out user2
+enter des-cbc decryption password:
+blue@saturn:~/SSL-$ 
+blue@saturn:~/SSL-$ cat user2
+apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+blue@saturn:~/SSL-$ 
+
+
+
+# La notion de salt ou graine #
+
+# On chiffre le fichier en DES, no salt, et on retourne un fichier ASCII (base64)
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -a -nosalt -k mdp	# -a ==> base64
+blue@saturn:~/SSL-$ cat user.dat 
+OCPNgJjMx56lJgzpabW2JRTebnYiguWaPeFb7GcjTxTPq5DvRrmDtGKbddHUww26
+blue@saturn:~/SSL-$ 
+
+# On le dechiffre
+
+blue@saturn:~/SSL-$ openssl des -d -in user.dat -out user2 -a -nosalt	# option -nosalt
+enter des-cbc decryption password:
+blue@saturn:~/SSL-$ 
+blue@saturn:~/SSL-$ cat user2 
+apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+
+Rq : un salt est utilisé par défaut, sinon un même mdp sur le même fichier engendre le même codage
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -k mdp -a	# avec salt par defaut
+blue@saturn:~/SSL-$ cat user.dat 
+U2FsdGVkX1/gexWvgVRvC6gmZMhLGAP/qRopkZWRkUHdFnc7NxEOVqTK+5e7MBey
+lyLQ7aLsW1ebqrUx5xgUhA==
+blue@saturn:~/SSL-$ 
+blue@saturn:~/SSL-$ file user*
+user:     ASCII text
+user.dat: ASCII text
+blue@saturn:~/SSL-$ 
+
+
+# on code en base64
+
+blue@saturn:~/SSL-$ openssl base64 -in user -out user.b64
+blue@saturn:~/SSL-$ cat user.b64 
+YXBhY2hlOnU0WDlzUnlhNEVsaWsKYmx1ZTpvYnVGZ2s0d0IvL3ZJCg==
+
+# on decode le fichier
+
+blue@saturn:~/SSL-$ openssl base64 -d -in user.b64 -out user2
+blue@saturn:~/SSL-$ cat user2
+apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+
+# le codage sera tjs le même
+
+blue@saturn:~/SSL-$
+blue@saturn:~/SSL-$ openssl base64 -in user -out user.b64-2
+blue@saturn:~/SSL-$ cat user.b64-2 
+YXBhY2hlOnU0WDlzUnlhNEVsaWsKYmx1ZTpvYnVGZ2s0d0IvL3ZJCg==
+blue@saturn:~/SSL-$ 
+
+
+Rq : Le codage base64 n'utilise pas de clé, ce n'est donc pas une méthode cryptographique, elle transforme du binaire en ASCII (et inversement)
+
+     le codage base64 n'est pas non plus une fonction de hash 
+     car un bit changé dans le texte ne transformera pas plus de la moitié de l'empreinte,
+     et surtout base64 n'est pas "irreversible".
+     
+
+	
+# Visualisation (option -p ) du salt et de la clé (et du bloc IV pcq'on utilise DES en CBC) # 
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -k mdp -p
+salt=0ABF4428A526B33E
+key=528E435852220B34
+iv =C8B0706DE27DB5A4
+blue@saturn:~/SSL-$ 
+
+blue@saturn:~/SSL-$ cat user.dat 
+Salted__
+...(codage crypté illisible)...blue@saturn:~/SSL-$ 
+blue@saturn:~/SSL-$ 
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -k mdp -p -a
+salt=34F25C92E0EBEB05
+key=70E8E19C7A8ADB93
+iv =D22AA85756D4375F
+blue@saturn:~/SSL-$ cat user.dat 
+U2FsdGVkX1808lyS4OvrBXdyY2yKAM0B5fEh8D351II74+tx4ssO8r2gIdk1/4BW
+2KxQZrCjLAsjETr4ojxTmg==
+blue@saturn:~/SSL-$ 
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat-2 -k mdp -p -a
+salt=D9642A231FEFB33D
+key=38441A0FDE32CF78
+iv =B491D1031EF0FF33
+blue@saturn:~/SSL-$ cat user.dat-2 
+U2FsdGVkX1/ZZCojH++zPfaaGs5929R5Fx36CapStZ+aE6GICawoSQNGSf4+7lAh
+yG4XP8EtxXJQgBWbVLScHQ==
+blue@saturn:~/SSL-$ 
+
+Le salt diffère à chaque fois qu'on relance la commande,
+et donc le fichier de sortie diffère
+
+
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat-2 -k mdp -p -nosalt
+key=AA36DC6E81E2AC7A
+iv =D03E12FEDCB6A2C0
+blue@saturn:~/SSL-$
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat-3 -k mdp -p -nosalt
+key=AA36DC6E81E2AC7A
+iv =D03E12FEDCB6A2C0
+blue@saturn:~/SSL-$
+
+Rq : nosalt, même mdp, même fichier == même clé (même chiffrement) 
+
+
+
+# algorithme rc4 (méthode à codage de flux)
+    
+blue@saturn:~/SSL-$ openssl rc4 -in user -out user.dat -k mdp -p
+salt=2D7F41646336F313
+key=D6D6BB051EBEB0D83E46CB0811FC1DF8
+
+# on va utiliser la clé (-K) du password (-k) "mdp" pour chiffrer et déchiffrer le fichier
+
+blue@saturn:~/SSL-$ openssl rc4 -in user -out user.dat-2 -K D6D6BB051EBEB0D83E46CB0811FC1DF8
+blue@saturn:~/SSL-$ openssl rc4 -d -in user.dat-2  -out user2 -K D6D6BB051EBEB0D83E46CB0811FC1DF8
+blue@saturn:~/SSL-$ cat user2
+apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+blue@saturn:~/SSL-$ 
+
+
+
+
+
+# avec DES (CBC méthode par defaut) il faut préciser -K et -iv
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -k mdp -nosalt -p -a
+key=AA36DC6E81E2AC7A
+iv =D03E12FEDCB6A2C0
+blue@saturn:~/SSL-$ cat user.dat 
+OCPNgJjMx56lJgzpabW2JRTebnYiguWaPeFb7GcjTxTPq5DvRrmDtGKbddHUww26
+blue@saturn:~/SSL-$ file user*
+user:     ASCII text
+user.dat: ASCII text
+blue@saturn:~/SSL-$
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat-2 -K AA36DC6E81E2AC7A -iv D03E12FEDCB6A2C0 -a
+blue@saturn:~/SSL-$ cat user.dat-2 
+OCPNgJjMx56lJgzpabW2JRTebnYiguWaPeFb7GcjTxTPq5DvRrmDtGKbddHUww26
+blue@saturn:~/SSL-$ 
+
+Rq : no salt, même clé == même sortie
+
+blue@saturn:~/SSL-$ openssl des -d -in user.dat -out user2 -K AA36DC6E81E2AC7A -iv D03E12FEDCB6A2C0 -a
+blue@saturn:~/SSL-$ cat user2
+apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+blue@saturn:~/SSL-$ 
+
+
+On indique nous-même le salt
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -S 01 -p -k mdp
+salt=0100000000000000
+key=0C73D73FBD08A8B0
+iv =144C1776A7B25830
+
+
+De même, en demandant une sortie en ASCII
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat -S 01 -p -k mdp -a
+salt=0100000000000000
+key=0C73D73FBD08A8B0
+iv =144C1776A7B25830
+
+blue@saturn:~/SSL-$ cat user.dat
+U2FsdGVkX18BAAAAAAAAAKeD7xB0BB8jqOUB4tPpKUTizzhhBGPILB2duUYgDWmm
+ik6Nx5x09KAL5AeQd6QmmA==
+
+
+
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat-2 -S 02 -p -k mdp -a
+salt=0200000000000000
+key=2DF731E2BB70BE01
+iv =6C6A435892506A21
+
+blue@saturn:~/SSL-$ cat user.dat-2 
+U2FsdGVkX18CAAAAAAAAAL5rtjPFe4y/9WieZX/DYJwTFRUizTCWLOrhKR3TPTyI
+mGEcznY0twyxs/WQvhc1ag==
+blue@saturn:~/SSL-$ 
+
+blue@saturn:~/SSL-$ openssl des -in user -out user.dat-2.2 -S 02 -p -k mdp -a
+salt=0200000000000000
+key=2DF731E2BB70BE01
+iv =6C6A435892506A21
+blue@saturn:~/SSL-$ cat user.dat-2.2 
+U2FsdGVkX18CAAAAAAAAAL5rtjPFe4y/9WieZX/DYJwTFRUizTCWLOrhKR3TPTyI
+mGEcznY0twyxs/WQvhc1ag==
+blue@saturn:~/SSL-$ 
+
+# Même salt, même mdp == même sortie
+
+
+
+
+
+
+#########################
+### FONCTIONS DE HASH ###
+#########################
+
+MD5 (128 bits), SHA (Standard) -1 (160 bits) -256, MD2, MD4, NHASH, SNEFROU ...
+ 
+Générateur d'empreinte, rôle similaire à celui des calculs du CRC (couche Liaison)
+Pour qu'une telle fonction soit valide, il faut :
+	1 bit changé dans le texte doit changer plus de la moitié de l'empreinte
+	irréversibilité (dps l'empreinte, il est impossible de reconstituer le texte original) 
+
+
+# Empreinte d'un fichier
+
+blue@saturn:~/SSL-$ openssl md5 user 
+MD5(user)= 48d89fd897bfcb35215ed5ea99f65bc6
+blue@saturn:~/SSL-$ openssl sha user 
+SHA(user)= c096445fcb57bd457437b5b6df0e32b20498543c
+blue@saturn:~/SSL-$ openssl sha256 user 
+SHA256(user)= 7480d1e07406c710241d0046e1bc41f2a22904ba5bd4cc0e75e53ae09a98a385
+
+blue@saturn:~/SSL-$ sed 's/apache/Apache/' -i user
+blue@saturn:~/SSL-$ cat user 
+Apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+blue@saturn:~/SSL-$ openssl sha256 user 
+SHA256(user)= 88bb045607199fcb052e0ff9978b434c37b1a689a1718e89f118b1d9dd8ca67e
+blue@saturn:~/SSL-$ 
+
+
+
+
+# Empreinte d'un mot #  openssl passwd -algo [-salt] mot
+# On hash le mot "mdp" avec algo standard crypt
+# le salt semble ne prendre que les 2 premiers caractères avec crypt
+
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -crypt -salt 101 mdp
+10h5VxSrHwOpw
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -crypt -salt 99 mdp
+99TXoldcoBSUI
+blue@saturn:~/PYTHON/SSL-$
+blue@saturn:~/SSL-$ openssl passwd -crypt -salt 01 mdp
+01HfLZt3figBE
+blue@saturn:~/SSL-$ openssl passwd -crypt -salt 0101 mdp	# Rq : même sortie
+01HfLZt3figBE
+blue@saturn:~/SSL-$ 
+
+
+# salt par defaut, il change à chaque relance de la commande, donc la sortie diffère
+
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -crypt mdp
+jYVGjj2nftVO6
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -crypt mdp
+pknZGbDofDmG.
+blue@saturn:~/PYTHON/SSL-$
+
+
+Usage: passwd [options] [passwords]
+where options are
+-crypt             standard Unix password algorithm (default)
+-1                 MD5-based password algorithm
+-apr1              MD5-based password algorithm, Apache variant
+-salt string       use provided salt
+-in file           read passwords from file
+-stdin             read passwords from stdin
+-noverify          never verify when reading password from terminal
+-quiet             no warnings
+-table             format output as table
+-reverse           switch table columns
+blue@saturn:~/SSL-$ openssl passwd -reverse mdp
+v4FhU8Zm.xrvU
+blue@saturn:~/SSL-$ openssl passwd -table mdp
+mdp	jHEeVRqe/u3Hk
+blue@saturn:~/SSL-$ openssl passwd -1 mdp
+$1$UhboOFb3$8TI/pyMFTH6ddhtyUpsPu0
+blue@saturn:~/SSL-$ openssl passwd -1 -salt 666 mdp
+$1$666$JeK64w18.fnaxCjUe3pwN0
+blue@saturn:~/SSL-$ openssl passwd -1 -salt 668 mdp
+$1$668$zlr9q5lEWRbuq29P3gLoG/
+blue@saturn:~/SSL-$
+
+
+
+
+# Empreinte md5 du mot "mdp" # -1 == md5
+
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -1 mdp
+$1$xaiyLCIu$ByGTncPtAo88wu9tnSQVh/
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -1 mdp
+$1$iH4r05Iz$XOVlXtVwuE24HdazHXXDJ.
+blue@saturn:~/PYTHON/SSL-$
+
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -1 -salt 666 mdp
+$1$666$JeK64w18.fnaxCjUe3pwN0
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -1 mdp 
+$1$Ps9hiCl/$NYJf.3421.uaWA8qHdz63.
+blue@saturn:~/PYTHON/SSL-$ openssl passwd -1 -salt 666 mdp
+$1$666$JeK64w18.fnaxCjUe3pwN0
+blue@saturn:~/PYTHON/SSL-$ 
+
+
+
+# login et shadow #
+
+$<algo>$<salt>$<empreinte_du_mdp_crypté>
+
+root@saturn:/home/blue-# grep red: /etc/shadow
+red:$6$Qg0M1X4y$cs.SyZRHVu6ClXPGd...pnLJ8.5IGKEy0KYCy24Gjh4nw2ydIo46.hZPy1PCSM.V11:17233:0:99999:7:::
+root@saturn:/home/blue-# 
+
+$6$ ==> sha-512
+$1$ ==> MD5
+
+
+# SHA-512 (passwd linux) à partir du noyau 2.6.28
+# openbsd utilise Blowfish
+
+# noyau 2.6.24 sur mandriva 2008 utilise MD5
+
+                                   
+blue@saturn:~/PYTHON/SSL-$ cat shadowmandriva 
+blue:$1$BzIui2M4$pwFqb6...1xTdTc12/:17233:0:99999:7:::
+
+blue@saturn:~/SSL-$ openssl passwd -1 -salt BzIui2M4 blueman		# -1 == md5
+$1$BzIui2M4$pwFqb6qr2rieJ1xTdTc12/
+blue@saturn:~/SSL-$ [[ pwFqb6qr2rieJ1xTdTc12/ == pwFqb6qr2rieJ1xTdTc12/ ]] && echo Access granted 
+Access granted
+blue@saturn:~/SSL-$ 
+
+blue@saturn:~/SSL-$ a=`cut -d: -f2 shadowmandriva` 
+blue@saturn:~/SSL-$ salt=`cut -d"$" -f3 shadowmandriva` 
+blue@saturn:~/SSL-$ b=`openssl passwd -1 -salt $salt blueman`
+blue@saturn:~/SSL-$ [[ $a == $b ]] && echo Access granted
+Access granted
+blue@saturn:~/SSL-$ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## ALGORITHMES À CLÉ PUBLIQUE ## (Asymétrique)
+
+
+Diffie-Hellman : ne chiffre pas de données, ne signe pas non plus,
+		 mais génère 2 paires de clés pour former une clé secrète afin de sécuriser une communication.
+		 
+
+
+RSA permet :
+
+	- authentification
+	- confidentialité
+	- intégrité
+
+
+# Demande bcp de ressources, on l'utilisera (le plus souvent) pour chiffrer une "clé de session" (algo symétrique), 
+que l'on enverra au(x) correspondant(s), pour crypter les communications. 
+
+
+
+# Génération d'une cle privée 	(voir + bas pour clé chiffrée)
+
+blue@saturn:~/SSL/keys-$ openssl genrsa -out rsakey.pem
+Generating RSA private key, 2048 bit long modulus
+........................................+++
+.....................+++
+e is 65537 (0x10001)
+
+blue@saturn:~/SSL/keys-$ ll
+total 4
+-rw-r--r--. 1 blue blue 1679  9 mars  11:23 rsakey.pem
+
+blue@saturn:~/SSL/keys-$ file rsakey.pem 
+rsakey.pem: PEM RSA private key
+
+blue@saturn:~/SSL/keys-$ cat rsakey.pem 
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpgIBAAKCAQEAylerSL3YGpO/BMBAUubqfyzlki6hRh530g/Mat7pWmnHmxxt
+VITaahPXOsjYgdWvpYUvfVLkvvPZq0nclL7CZg7GUukMMS93pW+9kEmH01m6pABV
+rORV06n7gTBOT27k6RPKvbXEAPprYs5AnnQr/PTdli9OvrP2F/9uK2Anrq4Ut+dP
+jHPA+gKMMJS4dk5XbKJwUk9XOpQUeQ7vbLD/8E2AXCUEV25mmDOKCQsszViSI3cl
+080yYa8aCBJkcW5jNTYS78F9quWYIup/oKR5Y0t7zx8RiERk4DQ1S60ZmlOG2ljm
+...
+X6t6Jdza3b7eVkbWwWuoV8D5PFjocCCrNTx0l5mjjOlwGd/gVL+XGIyf3q8eC4A/
+G2tZNcm4DqbHnpPPd5tNMHw30l5hjTvHAbMcYRtEZIF0ATaBF780xnxrTnFQynRo
+l87Tc6j8xDmds5b7hl5wUh1pAoGBANHUcuJeJu7TEGBNDr71D9L7+fuCFhDBjIcF
+ohPMfpLYPHyItKzRy+3FrSrgp6A9cLyDB7dgpUDoRu4tYu8YoiV85x/9P5gFcwbH
+eq+cD3Xok3CR83lj6L9jSLfpih3fB/V0GN2jPQdxsnnufVPb7gHm3OAxf1nBICL+
+qfq55UftAoGBAJg18Mp9cd/4sGy5H4GHHmBtO2TgjCTgEnVqrgDJcsbXiaoG0Spu
+egcKEse+D96H62887bBlF8yGWOJx9L0693MpSJyK3brv0hxU9TzPVHuV4tZVgGXI
+h9ZEMEmbUFuPP3g1wvE9ckQjQ09gC3BbZOps34fffZaOcGrxKKa+8jvW
+-----END RSA PRIVATE KEY-----
+blue@saturn:~/SSL/keys-$
+
+#####
+### Rq. :  BEGIN ... END ... en début et fin de fichier : format .pem (utilisé pour des clés, des certificats, ...)
+#####
+
+
+# Génération d'une pub dérivant de cette priv
+
+blue@saturn:~/SSL/keys-$ openssl rsa -in rsakey.pem -pubout -out rsakey.pub
+writing RSA key
+
+blue@saturn:~/SSL/keys-$ ll
+total 8
+-rw-r--r--. 1 blue blue 1679  9 mars  11:23 rsakey.pem
+-rw-r--r--. 1 blue blue  451  9 mars  11:26 rsakey.pub
+
+blue@saturn:~/SSL/keys-$ file rsakey.pub 
+rsakey.pub: ASCII text
+
+blue@saturn:~/SSL/keys-$ cat rsakey.pub 
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAylerSL3YGpO/BMBAUubq
+fyzlki6hRh530g/Mat7pWmnHmxxtVITaahPXOsjYgdWvpYUvfVLkvvPZq0nclL7C
+Zg7GUukMMS93pW+9kEmH01m6pABVrORV06n7gTBOT27k6RPKvbXEAPprYs5AnnQr
+/PTdli9OvrP2F/9uK2Anrq4Ut+dPjHPA+gKMMJS4dk5XbKJwUk9XOpQUeQ7vbLD/
+8E2AXCUEV25mmDOKCQsszViSI3cl080yYa8aCBJkcW5jNTYS78F9quWYIup/oKR5
+Y0t7zx8RiERk4DQ1S60ZmlOG2ljmyG4TLVfVsWkXN59Z/SVGCHT9VRVDpSOW7LYY
+MQIDAQAB
+-----END PUBLIC KEY-----
+blue@saturn:~/SSL/keys-$ 
+
+
+
+# FONCTION RSAUTL : On va chiffrer (-encrypt) le mot "mdp" avec (option -inkey) la pub (option -pubin), on met le tout dans le fichier "pswd.dat"
+
+blue@saturn:~/SSL/keys-$ echo "mdp" |openssl rsautl -encrypt -inkey rsakey.pub  -pubin -out pswd.dat 
+
+blue@saturn:~/SSL/keys-$ ll
+total 12
+-rw-r--r--. 1 blue blue  256  9 mars  11:33 pswd.dat
+-rw-r--r--. 1 blue blue 1679  9 mars  11:23 rsakey.pem
+-rw-r--r--. 1 blue blue  451  9 mars  11:26 rsakey.pub
+
+blue@saturn:~/SSL/keys-$ cat -v pswd.dat 
+...
+blue@saturn:~/SSL/keys-$ file pswd.dat 
+pswd.dat: data
+blue@saturn:~/SSL/keys-$ 
+
+
+
+# On déchiffre (fonction rsautl) le contenu du fichier (donc avec la priv)
+
+blue@saturn:~/SSL/keys-$ openssl rsautl -decrypt -inkey rsakey.pem -in pswd.dat 
+mdp
+blue@saturn:~/SSL/keys-$ 
+
+
+
+## Truc à FAIRE #
+blue@saturn:~/SSL/keys-$ chmod 400 rsakey.pem
+blue@saturn:~/SSL/keys-$ ll
+total 12
+-rw-r--r--. 1 blue blue  256  9 mars  11:33 pswd.dat
+-r--------. 1 blue blue 1679  9 mars  11:23 rsakey.pem
+-rw-r--r--. 1 blue blue  451  9 mars  11:26 rsakey.pub
+blue@saturn:~/SSL/keys-$
+
+
+
+Usage: rsautl [options]
+-in file        input file
+-out file       output file
+-inkey file     input key
+-keyform arg    private key format - default PEM
+-pubin          input is an RSA public
+-certin         input is a certificate carrying an RSA public key
+-ssl            use SSL v2 padding
+-raw            use no padding
+-pkcs           use PKCS#1 v1.5 padding (default)
+-oaep           use PKCS#1 OAEP
+-sign           sign with private key
+-verify         verify with public key
+-encrypt        encrypt with public key
+-decrypt        decrypt with private key
+-hexdump        hex dump output
+-engine e       use engine e, possibly a hardware device.
+-passin arg    pass phrase source
+
+blue@saturn:~/SSL/keys-$ echo mdp |openssl rsautl -inkey rsakey.pub -pubin -out pswd.dmp -encrypt -hexdump
+blue@saturn:~/SSL/keys-$ cat pswd.dmp
+0000 - 75 a3 ab d8 52 20 92 74-fc 6a 43 8d 77 74 c3 93   u...R .t.jC.wt..
+0010 - 5e ca 83 ea d7 4b 54 94-b8 3b b4 ef f8 9e 92 81   ^....KT..;......
+0020 - e8 ad e5 6b 73 d9 ab 2f-50 96 ef 21 db cf 69 c2   ...ks../P..!..i.
+0030 - 99 b0 f3 d9 15 0d cf 71-cb 7f c5 f4 a2 eb 09 d8   .......q........
+0040 - ef 77 68 cf d9 74 1a a3-25 ca 66 cb 07 a4 29 2d   .wh..t..%.f...)-
+0050 - 0f aa f8 24 8b fb 5a a9-39 71 78 6f f4 ad 76 d1   ...$..Z.9qxo..v.
+0060 - 96 66 7c 7e be 96 d7 30-c9 cb df f5 98 cc 73 05   .f|~...0......s.
+0070 - c6 e2 ea be 7c d2 93 5d-ea e3 2b 82 c6 7e ef e5   ....|..]..+..~..
+0080 - d0 6d fb de a4 20 2b d6-02 9e d7 80 9b f4 d4 96   .m... +.........
+0090 - 8d 8d 58 b6 79 83 f8 88-4b 67 d3 15 9a 46 1a bc   ..X.y...Kg...F..
+00a0 - 89 8b 67 6d 3f 9f f7 1d-30 9b 02 25 b8 f4 98 ee   ..gm?...0..%....
+00b0 - 3d d1 0a 03 b1 76 8b eb-08 20 21 99 87 1f d4 43   =....v... !....C
+00c0 - 31 57 78 fe 3f 4a 8c 7b-fe 3a 2e 13 b3 0b bc 39   1Wx.?J.{.:.....9
+00d0 - 39 21 36 2b 2f af ac 2a-ce ae f0 18 34 99 f5 bf   9!6+/..*....4...
+00e0 - 62 15 fd f4 8b 8e db da-38 bc 40 22 ac 90 85 cf   b.......8.@"....
+00f0 - d7 5f 4a ec fd 4a 6c c8-07 d3 d0 e0 fc 36 4a 0e   ._J..Jl......6J.
+blue@saturn:~/SSL/keys-$
+
+
+
+
+
+
+
+
+
+
+
+
+
+###	    ###
+## SIGNATURE ##
+###	    ###
+
+###
+# Principe :
+# On calcule l'empreinte (algo md5 ou sha-1 ...) d'un document,
+# on chiffre cette empreinte avec sa priv
+# on associe cette empreinte chiffrée au document
+#
+# Donc signer, c'est crypter avec sa clé priv (en tout cas par convention ...) l'empreinte d'un fichier
+###
+
+# on crée un fichier empreinte (.sha) du doc (fonction dsgt)
+
+blue@saturn:~/SSL/keys-$ openssl dgst -sha doc.txt > doc.txt.sha  				   # on calcule l'empreinte
+
+blue@saturn:~/SSL/keys-$ file doc.txt.sha 
+doc.txt.sha: ASCII text
+
+blue@saturn:~/SSL/keys-$ cat doc.txt.sha 
+SHA(doc.txt)= d90ada09fb2e6ae88354f983cd5c8bd0ac3b4c65
+
+# on crypte ce fichier .sha avec sa priv et on retourne le résultat dans un fichier .sig
+
+blue@saturn:~/SSL/keys-$ openssl rsautl -sign -in doc.txt.sha -inkey rsakey.pem -out doc.txt.sig    # on signe (en fait on chiffre) le fichier empreinte avec priv
+
+blue@saturn:~/SSL/keys-$ ll
+total 20
+-rw-r--r--. 1 blue blue   42  9 mars  12:02 doc.txt
+-rw-r--r--. 1 blue blue   55  9 mars  12:03 doc.txt.sha
+-rw-r--r--. 1 blue blue  256  9 mars  12:05 doc.txt.sig
+-r--------. 1 blue blue 1679  9 mars  11:23 rsakey.pem
+-rw-r--r--. 1 blue blue  451  9 mars  11:26 rsakey.pub
+blue@saturn:~/SSL/keys-$ file doc*
+doc.txt:     ASCII text
+doc.txt.sha: ASCII text
+doc.txt.sig: data
+blue@saturn:~/SSL/keys-$ 
+
+#####################################################################
+# pour vérifier la signature, on va décrypter le .sig avec la pub,
+# et passer le doc à la même fonction de hash.
+# Si l'empreinte est identique, ça signifie que :
+#  - le doc n'a pas été modifié (intégrité)
+#  - l'identité de l'expéditeur est authentifiée
+#####################################################################
+
+
+blue@saturn:~/SSL/keys-$ openssl rsautl -verify -in doc.txt.sig  -inkey rsakey.pub -pubin
+SHA(doc.txt)= d90ada09fb2e6ae88354f983cd5c8bd0ac3b4c65
+blue@saturn:~/SSL/keys-$ openssl sha doc.txt
+SHA(doc.txt)= d90ada09fb2e6ae88354f983cd5c8bd0ac3b4c65
+blue@saturn:~/SSL/keys-$ 
+
+####
+# On peut signer le doc en une seule commande,
+# cad sans avoir à créer un fichier empreinte.
+# On génère une empreinte que l'on chiffre
+####
+
+
+####
+## SIGNER UN DOC ET GÉNÉRER UN FICHIER.SIG	(dgst algo -sign priv fic.sig fic)
+####
+
+blue@saturn:~/SSL/keys-$ openssl dgst -md5 -sign rsakey.pem -out doc.sig doc
+
+
+blue@saturn:~/SSL/keys-$ file *
+doc:        ASCII text
+doc.sig:    data
+pswd.dmp:   ASCII text
+rsakey.pem: PEM RSA private key
+rsakey.pub: ASCII text
+blue@saturn:~/SSL/keys-$ 
+
+
+####
+## Vérifier la signature (donc vérif intégrité du doc et authenticité de l'exp) en une seule commande (dgst -algo -verify pub -signature fic.sig fic)
+####
+
+blue@saturn:~/SSL/keys-$ openssl dgst -md5 -verify rsakey.pub -signature doc.sig doc
+Verified OK
+blue@saturn:~/SSL/keys-$ 
+
+blue@saturn:~/SSL/keys-$ openssl dgst -sha256 -verify rsakey.pub -signature doc.sig doc
+Verification Failure
+blue@saturn:~/SSL/keys-$
+
+# Ne pas oublier de se mettre d'accord sur la fonction de hash ...
+
+
+
+
+
+
+
+###
+## Pour générer une clé priv (fonction genrsa) de 4096 bits elle-même cryptée par un algo symétrique, disons aes-256
+###
+
+blue@saturn:~/SSL/keys-$ openssl genrsa -out aeskey -aes256 4096
+Generating RSA private key, 4096 bit long modulus
+......++
+......................++
+e is 65537 (0x10001)
+Enter pass phrase for aeskey: rsaes
+Verifying - Enter pass phrase for aeskey:
+
+blue@saturn:~/SSL/keys-$ file *
+aeskey:     PEM RSA private key
+rsakey.pem: PEM RSA private key
+rsakey.pub: ASCII text
+blue@saturn:~/SSL/keys-$
+
+blue@saturn:~/SSL/keys-$ cat aeskey 
+-----BEGIN RSA PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-256-CBC,38A9A9...80E1632A207D
+
+MHniVyTFPqsT7wIY5E2esHwGLLwP3HmEao5bkuIMucEWsU5NhIlOWbfsCymI/yhn
+5+CKornVpGQZOCZTHkVxMha54EeVx80EEFIcaGiD3lgpat2LqPLOTwx+XhboYsLf
+pAZpmPupxImhSm4mTNj4yzwf/uZiWfsYSePAPphoWM+hOH7tlAS+0eIgU8gzZj83
+...
+...
+ObPc5Krcp8jfggw6Y7GI6roVWziBuYLr2GnimDs+zxeZW8JXVLWPiZ/eBBlLRT2v
+qyg2lMu7EVMisu2fVRGlmjDKXaRxIQV0yB0NnahBDvO9AVE7KwFSD2/QZYy729TD
+t5h6wsqnNqEXcxuDFXWTiHk5+DgYAZYAV+Yrtla5DffqctG5OrBXaEUWcl9jxSKf
+...
+4thMw1c8yhBWuStP6YQpd/t2z8ZzKb2ymPgeW/2/5XYQsJAXSA50eE9EuZRsJNKF
+bBSV/Fxt9sDVwVSek7SGnXQ9StnIW73F9VSUB2HuftCTtO00spxrCmOmhfvc/yya
+-----END RSA PRIVATE KEY-----
+blue@saturn:~/SSL/keys-$ 
+
+
+##
+# on dérive (fonction rsa) une pub (-option pubout), de cette priv
+##
+
+
+blue@saturn:~/SSL/keys-$ openssl rsa -in aeskey -pubout -out aeskey.pub 
+Enter pass phrase for aeskey:
+writing RSA key
+
+blue@saturn:~/SSL/keys-$ ll
+total 16
+-r--------. 1 blue blue 3326  9 mars  12:45 aeskey
+-rw-r--r--. 1 blue blue  800  9 mars  12:52 aeskey.pub
+-r--------. 1 blue blue 1679  9 mars  11:23 rsakey.pem
+-rw-r--r--. 1 blue blue  451  9 mars  11:26 rsakey.pub
+
+blue@saturn:~/SSL/keys-$ file aeskey.pub 
+aeskey.pub: ASCII text
+
+
+blue@saturn:~/SSL/keys-$ cat aeskey.pub 
+-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA3DA+ggCc7Ha57AzSZUFy
+X4yFGmo+19YGobD95+yUJUDrF+qj4Tx8dWNajFcS+TEcsfAuDNT2Y9X9kCASlja8
+XreKjuB/wLbDBR5O08GGgDk4hTJTGrc0UYlxvYJbI40Ni8YUJqDjn7dG0caGfVGc
+3iXmCurONvtpPHWfySrr8t3kH3FQVP4aNOAbiBC37RBJEq+WgN4DSv7e4wZxvLoV
+VDhsCKlMz1wgWpNPe6Zk/k9cvmEdmZTPYT2NWIETnBFg6VAUI1S/6EJppDVol0PE
+glz5PJ+VBBD4VHP7iJ/V349EW+I51Y1zpx4iN+fJH6h+2rd43ZVQ7JjcQmIpjia4
+aT9XPZpxIy1LBh5nMfNq/B5W41BYxgx9avyCzwqlzmcaqLSrFrX8JhMOYPAPjljj
+4NgX5+BXBUxR/rTFsc1EyFC5nZ/OC7zTApUWHsoXxt6Io6e73+RPwoKRnHalb+z6
+oOR1rCgM+Y/GWaaSdNM53gclE6yLx556/qTvuaE+F3MmmlxfoWPZS6/5D5VspHXC
+fIZkfDJhFzHigxXRfY2p9Hr7eEDnViIKeK25xSgCLBZNdvOM58YoFQHPXfdgNnv9
+AutHjC/889rQoxeWyTfKf/q4TcEtxdSHeTPxVamLs/LGs/vI8cezV2NF235YGTQw
+/k+RQXZF7z+YyD2+pPrk2jUCAwEAAQ==
+-----END PUBLIC KEY-----
+blue@saturn:~/SSL/keys-$ 
+
+
+
+##
+# si on veut changer de passphrase, on doit générer une nouvelle clé priv dérivant de la priv ...
+# ainsi, la pub ne change pas. 
+##
+
+blue@saturn:~/SSL/keys-$ openssl rsa -aes256 -in aeskey -out newaeskey
+Enter pass phrase for aeskey: rsaes
+writing RSA key
+Enter PEM pass phrase: newa
+Verifying - Enter PEM pass phrase:
+blue@saturn:~/SSL/keys-$ ll
+total 20
+-r--------. 1 blue blue 3326  9 mars  12:45 aeskey
+-rw-r--r--. 1 blue blue  800  9 mars  12:52 aeskey.pub
+-rw-r--r--. 1 blue blue 3326  9 mars  13:03 newaeskey
+-r--------. 1 blue blue 1679  9 mars  11:23 rsakey.pem
+-rw-r--r--. 1 blue blue  451  9 mars  11:26 rsakey.pub
+blue@saturn:~/SSL/keys-$ openssl rsa -in newaeskey -pubout -out newaeskey.pub  ## inutile pcq la pub reste identique ##
+Enter pass phrase for newaeskey:
+writing RSA key
+blue@saturn:~/SSL/keys-$
+
+blue@saturn:~/SSL/keys-$ cmp newaeskey.pub aeskey.pub 
+blue@saturn:~/SSL/keys-$
+blue@saturn:~/SSL/keys-$ diff newaeskey.pub aeskey.pub 
+blue@saturn:~/SSL/keys-$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		############
+		### x509 ###
+		############
+
+
+# Un certificat racine est auto-signé, cad que l'organisme qui est à l'origine de la requete du certif 
+joue lui-même le rôle de l' Authorité de Certif (CA)
+
+##
+# Visualiser le certif (ca.crt dans openvpn : certif racine)
+# les .csr sont les certificate request 
+##
+
+# rq : option -noout ==> sans affichage "format pem" (BEGIN ... END)
+
+root@raspberrypi:/etc/openvpn/easy-rsa/keys # openssl x509 -in ca.crt -text -noout
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            e9:50:5c:d4:9b:ae:7d:ef
+    Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=FR, ST=IDF, L=Paris, O=ceruleanfirm, OU=MyOrganizationalUnit, CN=raspberrypi/name=blue/emailAddress=ceruleanfirm@gmail.com
+        Validity
+            Not Before: Aug 13 16:03:40 2016 GMT
+            Not After : Aug 11 16:03:40 2026 GMT
+        Subject: C=FR, ST=IDF, L=Paris, O=ceruleanfirm, OU=MyOrganizationalUnit, CN=raspberrypi/name=blue/emailAddress=ceruleanfirm@gmail.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:a7:7f:e3:22:cd:6b:f1:25:89:aa:3e:91:22:7d:
+                    4d:5c:0b:ee:4f:cb:32:dc:e2:4b:a2:af:78:e9:d9:
+                    ...
+                    92:07:dc:81:14:55:b9:cd:61:cc:dc:a3:7d:76:7c:
+                    39:28:44:43:8f:14:cd:3c:d1:d0:a2:11:e6:32:c3:
+                    30:3d
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Subject Key Identifier: 
+                FB:52:3F:6C:8A:...DC:0A:CA:22:EE:5F:A6:47
+            X509v3 Authority Key Identifier: 
+                keyid:FB:52:3F:6C:8A:F3:30:...:EE:5F:A6:47
+                DirName:/C=FR/ST=IDF/L=Paris/O=ceruleanfirm/OU=MyOrganizationalUnit/CN=raspberrypi/name=blue/emailAddress=ceruleanfirm@gmail.com
+                serial:E9:50:5C:D4:9B:AE:7D:EF
+
+            X509v3 Basic Constraints: 
+                CA:TRUE
+    Signature Algorithm: sha256WithRSAEncryption
+         14:fb:64:92:ed:3c:27:ce:b4:08:21:c9:93:d7:7b:bd:41:ca:
+         1b:3b:5a:78:71:bd:74:17:2c:f1:d6:95:11:e5:1e:49:28:a1:
+    	 ...
+         ea:c8:39:84:4c:7d:fe:51:7b:72:e7:b5:16:f7:c6:fa:a7:7a:
+         6d:8d:2c:75:f7:ce:fb:15:b4:ee:2d:11:e7:32:db:01:21:39:
+         49:cc:1c:9a
+root@raspberrypi:/etc/openvpn/easy-rsa/keys # 
+
+
+##
+# Création d'une requete de certif
+# Pour ça on va se creer un couple de clés (rsa tripleDES), puis on effectue la requete
+##
+
+
+blue@saturn:~/SSL/x509-$ openssl genrsa -out xkey -des3 4096
+Generating RSA private key, 4096 bit long modulus
+.................++
+..........++
+e is 65537 (0x10001)
+Enter pass phrase for xkey: xkey
+Verifying - Enter pass phrase for xkey:
+blue@saturn:~/SSL/x509-$ 
+blue@saturn:~/SSL/x509-$ chmod 400 xkey 
+
+blue@saturn:~/SSL/x509-$ openssl rsa -in xkey -pubout -out xkey.pub
+Enter pass phrase for xkey:
+writing RSA key
+blue@saturn:~/SSL/x509-$ 
+blue@saturn:~/SSL/x509-$ file *
+xkey:     PEM RSA private key
+xkey.pub: ASCII text
+blue@saturn:~/SSL/x509-$ 
+
+
+##
+# Requete certif émanant de notre priv
+##
+
+blue@saturn:~/SSL/x509-$ openssl req -new -key xkey -out ca.csr
+Enter pass phrase for xkey:
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:FR
+State or Province Name (full name) []:IDF
+Locality Name (eg, city) [Default City]:Paris
+Organization Name (eg, company) [Default Company Ltd]:planetpixel
+Organizational Unit Name (eg, section) []:saturn
+Common Name (eg, your name or your server's hostname) []:saturn
+Email Address []:saturn@planet.org
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+blue@saturn:~/SSL/x509-$ 
+
+
+###
+## Visualiser la requete
+###
+
+blue@saturn:~/SSL/x509-$ openssl req -in ca.csr -text
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject: C=FR, ST=IDF, L=Paris, O=planetpixel, OU=saturn, CN=saturn/emailAddress=saturn@planet.org
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (4096 bit)
+                Modulus:
+                    00:c9:d8:5e:23:bd:5d:4e:cf:f6:8a:c0:b2:fe:ec:
+                    51:ae:48:55:f7:fe:5d:40:f1:d6:ab:33:99:c6:f6:
+                    ...
+                    29:49:a2:69:4e:9f:a8:7b:e9:24:a8:c3:08:52:91:
+                    8c:18:bb:7b:ae:13:97:fc:68:11:88:71:77:32:82:
+                    af:a8:b8:96:0e:3d:14:ab:f1:a9:a8:51:bf:c0:78:
+                    b1:3f:bd:6d:47:70:6f:ff:a0:2d:14:6a:f2:4a:ee:
+                    b7:d2:07:e4:69:52:16:47:67:25:de:d8:6b:34:33:
+                    52:b4:a5
+                Exponent: 65537 (0x10001)
+        Attributes:
+            a0:00
+    Signature Algorithm: sha256WithRSAEncryption
+         09:bc:19:fb:66:88:0b:77:de:d7:33:ec:53:dd:56:2b:fb:19:
+         3f:b5:3e:63:d8:f4:ca:6d:09:30:cf:4c:af:2d:fc:b4:24:4d:
+         38:9a:7e:92:38:a3:b2:1e:2f:96:af:03:75:33:d3:f4:57:d4:
+         ...
+         d4:2c:fc:3d:11:81:59:61:f5:39:8e:e0:98:e6:d4:85:4a:e5:
+         6d:63:54:71:34:52:6f:30:12:51:46:62:58:ea:a3:b7:26:e0:
+         a7:b9:5a:77:3c:ca:7b:48:54:6d:29:35:f5:85:d9:ef:28:c3:
+         81:82:5d:a0:60:31:19:d6
+-----BEGIN CERTIFICATE REQUEST-----
+MIIEyzCCArMCAQAwgYUxCzAJBgNVBAYTAkZSMQwwCgYDVQQIDANJREYxDjAMBgNV
+BAcMBVBhcmlzMRQwEgYDVQQKDAtwbGFuZXRwaXhlbDEPMA0GA1UECwwGc2F0dXJu
+MQ8wDQYDVQQDDAZzYXR1cm4xIDAeBgkqhkiG9w0BCQEWEXNhdHVybkBwbGFuZXQu
+...
+SQuCVD1ma2LjO4VTY+5nOhzLM/NIaSGqpzn/RwDL/t8Tw9/y2fR5xIQJPYUM0l54
+3lH5i60fvgqnOoW26gQ691gklIanOLAUhFf5je2OSpo3rwSdTtGE66KRHASgox9R
+MXJIXWVQz4LA5LktSneeLNjULPw9EYFZYfU5juCY5tSFSuVtY1RxNFJvMBJRRmJY
+6qO3JuCnuVp3PMp7SFRtKTX1hdnvKMOBgl2gYDEZ1g==
+-----END CERTIFICATE REQUEST-----
+blue@saturn:~/SSL/x509-$ 
+
+
+##
+# On crée le certif racine au format x509, que l'on signe avec priv (autosignature)
+##
+
+blue@saturn:~/SSL/x509-$ openssl x509 -req -in ca.csr -signkey xkey -out ca.crt
+Signature ok
+subject=/C=FR/ST=IDF/L=Paris/O=planetpixel/OU=saturn/CN=saturn/emailAddress=saturn@planet.org
+Getting Private key
+Enter pass phrase for xkey:
+blue@saturn:~/SSL/x509-$ file *
+ca.crt:   PEM certificate
+ca.csr:   PEM certificate request
+xkey:     PEM RSA private key
+xkey.pub: ASCII text
+blue@saturn:~/SSL/x509-$ 
+
+
+
+# Arborescence de PKI  /etc/pki
+
+
+root@saturn:/home/blue-# cp SSL/x509/xkey /etc/pki/CA/private/cakey.pem
+
+root@saturn:/home/blue-# cp SSL/x509/ca.crt /etc/pki/CA/cacert.pem
+ 
+root@saturn:/etc/pki/CA-# > index.txt
+
+root@saturn:/etc/pki/CA-# echo "01" > serial
+
+
+# saturn est donc notre authorité de certification (CA) disposant du certificat racine (autosigné)
+
+Rq : Pour que notre CA soit capable de générer et signer des certif clients (devenir une PKI),
+     il faut créer les fichiers index.txt et serial dans l'arborescence
+
+#-----------------------#
+## Gestion des clients ##
+#-----------------------#
+
+##
+# On genere une paire de clés pour le client,
+# On crée la requete de certif du client, à p. de cette priv
+# puis on genere son certif en signant cette requete avec le certif racine, et la clé priv correspondant au certif racine.
+# En tant que CA (donc disposant/administrant une PKI) on signe le certif client avec /etc/pki/CA/cacert.pem (le certif racine) et la clé priv du CA
+##
+
+
+blue@saturn:~/SSL/x509-$ mkdir clients
+blue@saturn:~/SSL/x509-$ cd clients
+
+blue@saturn:~/SSL/x509/clients-$ openssl genrsa -out neptune				# génération de la clé rsa
+Generating RSA private key, 2048 bit long modulus
+..............................................................+++
+.............................................................................+++
+e is 65537 (0x10001)
+
+blue@saturn:~/SSL/x509/clients-$ openssl rsa -in neptune -pubout -out neptune.pub	# dérivation de la pub
+writing RSA key
+blue@saturn:~/SSL/x509/clients-$ 
+
+blue@saturn:~/SSL/x509/clients-$ openssl req -new -key neptune -out neptune.csr	# requête de certif client dps la clé rsa priv client
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:FR
+State or Province Name (full name) []:IDF
+Locality Name (eg, city) [Default City]:Paris
+Organization Name (eg, company) [Default Company Ltd]:planetpixel     
+Organizational Unit Name (eg, section) []:neptune
+Common Name (eg, your name or your server's hostname) []:neptune
+Email Address []:neptune@planet.org
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:		### nécessaire pour format PKCS12 (demandé par outlook par exemple) # on le laisse vide, on signera le certif ensuite.
+An optional company name []:
+blue@saturn:~/SSL/x509/clients-$ 
+blue@saturn:~/SSL/x509/clients-$ openssl req -in neptune.csr -text			# visualisation de la requête
+Certificate Request:
+    Data:
+        Version: 0 (0x0)
+        Subject: C=FR, ST=IDF, L=Paris, O=planetpixel, OU=neptune, CN=neptune/emailAddress=neptune@planet.org
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:c7:8f:4c:92:2d:c0:a6:bd:b6:fe:ee:5d:34:ab:
+                    94:81:32:d5:47:2e:9d:98:fb:9d:a9:30:be:e8:20:
+                    ...
+                    5b:18:00:2b:3f:32:02:13:47:37:37:93:05:39:72:
+                    f6:c5:6a:92:81:aa:ee:e3:3a:f8:33:70:c7:81:80:
+                    a1:aa:52:73:77:9c:27:b4:3a:13:32:05:6a:3d:ab:
+                    5e:05:d8:19:e3:ed:cf:29:f9:1a:6e:1c:22:b3:0c:
+                    cc:f5
+                Exponent: 65537 (0x10001)
+        Attributes:
+            unstructuredName         :planetpixel
+    Signature Algorithm: sha256WithRSAEncryption
+         9b:fc:e2:00:0c:a6:a2:e4:d8:bc:8b:38:5e:85:9d:f8:dd:2c:
+         ec:07:26:87:1a:52:46:43:06:77:03:fd:f8:c5:9e:29:d6:b8:
+         ...
+         5c:f1:6f:ac:6e:c1:88:e1:a4:55:cc:7f:0a:d6:d7:10:7a:2c:
+         1c:27:f7:df:a6:3e:6f:9a:20:0a:88:78:c0:4d:eb:68:74:0e:
+         63:50:2b:6f:4d:72:78:4c:0f:c8:34:69:e7:df:00:9c:6f:23:
+         0a:28:8d:3b
+-----BEGIN CERTIFICATE REQUEST-----
+MIIC9jCCAd4CAQAwgZQxCzAJBgNVBAYTAkZSMQwwCgYDVQQIDANJREYxDjAMBgNV
+BAcMBVBhcmlzMRUwEwYDVQQKDAxjZXJ1bGVhbmZpcm0xEDAOBgNVBAsMB25lcHR1
+bmUxGzAZBgNVBAMMEm5lcHR1bmUucGxhbmV0Lm9yZzEhMB8GCSqGSIb3DQEJARYS
+...
+VVT82ZIgxr4uCEdsa7LoHVeqjQiwBSMB4ZW274WYcIg514ebIhVtVKxul+eG5M71
+AFeLkdOjui/kfu3kBIXGrIw1fCv3zBcfq82uzY9/rKus3qz1/t6hxqiLbyobxMm7
+qYwViClOQJByr4F+NGtUuTcPlTpUI2yLXN3JY0yH2Lpc8W+sbsGI4aRVzH8K1tcQ
+eiwcJ/ffpj5vmiAKiHjATetodA5jUCtvTXJ4TA/INGnn3wCcbyMKKI07
+-----END CERTIFICATE REQUEST-----
+blue@saturn:~/SSL/x509/clients-$ 
+
+##
+# Création du certif client (au format x509) en signant la req certif client avec le certif CA et la cle priv CA #
+##
+
+blue@saturn:~/SSL/x509/clients-$ openssl x509 -req -days 365 -CAcreateserial -CA ../ca.crt -CAkey ../xkey -in neptune.csr -out neptune.crt
+Signature ok
+subject=/C=FR/ST=IDF/L=Paris/O=planetpixel/OU=neptune/CN=neptune/emailAddress=neptune@planet.org
+Getting CA Private Key
+Enter pass phrase for ../xkey:
+blue@saturn:~/SSL/x509/clients-$ 
+
+
+blue@saturn:~/SSL/x509/clients-$ file *
+neptune:     PEM RSA private key
+neptune.crt: PEM certificate
+neptune.csr: PEM certificate request
+neptune.pub: ASCII text
+blue@saturn:~/SSL/x509/clients-$ 
+
+blue@saturn:~/SSL/x509/clients-$ chmod 400 neptune neptune.c*
+blue@saturn:~/SSL/x509/clients-$ ll
+total 16
+-r--------. 1 blue blue 1675 24 mars  11:33 neptune
+-r--------. 1 blue blue 1635 24 mars  11:41 neptune.crt
+-r--------. 1 blue blue 1050 24 mars  11:36 neptune.csr
+-rw-r--r--. 1 blue blue  451 24 mars  11:34 neptune.pub
+blue@saturn:~/SSL/x509/clients-
+
+
+blue@saturn:~/SSL/x509/clients-$ openssl x509 -in neptune.crt -text				# visualisation du certif client
+Certificate:
+    Data:
+        Version: 1 (0x0)
+        Serial Number:
+            e9:75:39:5d:3a:1e:e8:4a
+    Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=FR, ST=France, L=Paris, O=ceruleanfirm, OU=ops, CN=saturn/emailAddress=ceruleanfirm@gmail.com
+        Validity
+            Not Before: Mar 11 10:19:09 2017 GMT
+            Not After : Mar 11 10:19:09 2018 GMT
+        Subject: C=FR, ST=IDF, L=Paris, O=ceruleanfirm, OU=neptune, CN=neptune.planet.org/emailAddress=neptune@planet.org
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:c7:8f:4c:92:2d:c0:a6:bd:b6:fe:ee:5d:34:ab:
+                    94:81:32:d5:47:2e:9d:98:fb:9d:a9:30:be:e8:20:
+                    c2:6b:67:6d:4b:e5:95:c2:55:a7:b1:44:d4:1d:34:
+                    ...
+                    24:6e:f9:3b:2b:a1:94:e1:c5:da:96:02:1c:e0:e6:
+                    5d:86:18:58:21:2b:cd:d9:c5:61:38:47:17:ba:27:
+                    5b:18:00:2b:3f:32:02:13:47:37:37:93:05:39:72:
+                    f6:c5:6a:92:81:aa:ee:e3:3a:f8:33:70:c7:81:80:
+                    a1:aa:52:73:77:9c:27:b4:3a:13:32:05:6a:3d:ab:
+                    5e:05:d8:19:e3:ed:cf:29:f9:1a:6e:1c:22:b3:0c:
+                    cc:f5
+                Exponent: 65537 (0x10001)
+    Signature Algorithm: sha256WithRSAEncryption
+         23:25:8f:fb:77:ca:ef:92:85:e7:33:69:f5:81:82:ff:3b:40:
+         4d:25:6e:0d:71:9e:84:f5:14:d9:4c:f1:e6:14:53:84:1e:45:
+         ...
+         75:53:76:fd:60:8f:d4:b7:22:66:0d:b0:5d:f9:74:44:4c:91:
+         44:93:50:4b:b3:54:5e:ac:b8:9e:a1:99:e9:71:86:b2:0c:af:
+         8f:50:ee:25:eb:93:24:a7:6a:0f:a3:5d:a7:64:34:a0:1d:ea:
+         10:7f:bc:0f:5a:c5:93:92:ae:38:55:31:72:19:e5:e4:2f:1c:
+         7a:e5:e5:7b:d1:8e:86:de
+-----BEGIN CERTIFICATE-----
+MIIEnTCCAoUCCQDpdTldOh7oSjANBgkqhkiG9w0BAQsFADCBizELMAkGA1UEBhMC
+RlIxDzANBgNVBAgMBkZyYW5jZTEOMAwGA1UEBwwFUGFyaXMxFTATBgNVBAoMDGNl
+cnVsZWFuZmlybTEMMAoGA1UECwwDb3BzMQ8wDQYDVQQDDAZzYXR1cm4xJTAjBgkq
+hkiG9w0BCQEWFmNlcnVsZWFuZmlybUBnbWFpbC5jb20wHhcNMTcwMzExMTAxOTA5
+...
+cGxkTSXrFaXubHKNoWn12xu/bH3uRp8gyUgHAxisPTVBWA1wY9W4GKGWqDRgYYb1
+rxlyFsv3auaPnpoj79V5l6ykK7xJ/QOkhK4Xsk/RSce7lOoi0UzTQ72OESZvUIUa
+hYjCgGrQPRBF4M2qRfd7BvwrYft1KeSPNvQxsIOQAOa5exRih86A/ozI+m0w//TU
+mHVTdv1gj9S3ImYNsF35dERMkUSTUEuzVF6suJ6hmelxhrIMr49Q7iXrkySnag+j
+XadkNKAd6hB/vA9axZOSrjhVMXIZ5eQvHHrl5XvRjobe
+-----END CERTIFICATE-----
+blue@saturn:~/SSL/x509/clients-$ 
+
+
+
+# Envoie sécurisé des documents au client
+
+blue@saturn:~/SSL/x509/clients-$ scp neptune.crt neptune neptune.pub ../xkey.pub root@neptune:/root/x509
+root@neptune's password: 
+neptune.crt                                          100% 1659     1.6KB/s   00:00    
+neptune                                              100% 1679     1.6KB/s   00:00    
+neptune.pub                                          100%  451     0.4KB/s   00:00    
+blue@saturn:~/SSL/x509/clients-$ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash
+# gencertifclient.sh
+# Le certif sera créé si le client est sur le réseau
+# On peut sinon effectuer le ping juste avant la com ssh
+
+[[ $# < 1 ]] && echo "Usage : $0 <nom client(s)>" && exit 1
+
+read -p "Certificat racine (chemin absolu) : " cert
+[[ -f $cert && -r $cert ]] || { 
+	echo -e "$cert inaccessible ...\nFin du programme" 
+	exit 2 
+	}
+file $cert
+read -p "Clé privée (chemin absolu) : " cle
+[[ -f $cle && -r $cle ]] || { 
+	echo -e "$cle inaccessible ...\nFin du programme" 
+	exit 2 
+	}
+file $cle
+read -p "Clé publique (chemin absolu) : " pub
+[[ -f $pub && -r $pub ]] || { 
+	echo -e "$pub inaccessible ...\nFin du programme" 
+	exit 2 
+	}
+echo -e "\nVeuillez vérifier qu'il s'agit bien de la clé PUBLIQUE du CA\n"
+file $pub
+sleep 2
+echo
+read -p "Durée de validité du certificat (nombre de jours) : " day
+echo
+while [[ "$#" -ge 1 ]] ; do
+	ping -c2 $1 || {
+		echo -e "\n$1 : host unreachable\n"
+		sleep 2
+		shift 
+		continue
+	}
+	mkdir "$1" 2>/dev/null
+	cd "$1"
+	{
+		echo -e "\n\tCRÉATION CERTIFICAT : $1\n"
+		sleep 2 
+	# création rsa priv du client
+		openssl genrsa -out $1.pem 
+		chmod 400 $1.pem   
+	# dérivation rsa pub client
+		openssl rsa -in $1.pem -pubout -out $1.pub 
+	# requête certificat client émanant de sa priv
+		openssl req -new -key $1.pem -out $1.csr 
+	# création certif client dps le certif du CA 
+	# et signature du certif client avec priv du CA
+		openssl x509 -req -days $day -CAcreateserial -CA $cert \
+	-CAkey $cle -in $1.csr -out $1.crt  # 
+	}
+	[[ $? = 0 ]] && echo -e "\n\tCERTIFICAT DE $1 CRÉÉ AVEC SUCCÈS\n" || \
+	{
+		echo -e "\nERREUR CRÉATION CERTIFICAT\n"
+		cd ..
+		rm -fr $1
+		exit 11
+	}
+	sleep 2
+	chmod 400 $1.crt
+	read -p "Envoi sécurisé des données (certificat et clés) vers $1 (O/N) ? " rep
+	case $rep in 
+	   O|o) read -p "Port ssh : " port
+	        ssh -p$port root@$1 "mkdir x509 2>/dev/null"
+		scp -P$port $pub $1.crt $1.pem $1.pub root@$1:/root/x509/
+		[[ $? = 0 ]] && echo -e "\nDonnées envoyées.\n" || \
+		echo -e "\nEchec envoi ...\n"
+		;;
+	     *) echo -e "\nEnvoi annulé\n" 
+		;;
+	esac
+	cd ..
+	sleep 2
+	shift
+	
+done
+
+exit 0	
+
+
+
+
+
+
+
+blue@saturn:~/SSL/x509/clients-$ ~/binshell/gencertifclient.sh jupiter triton ioCertificat racine (chemin absolu) : /home/blue/SSL/x509/ca.crt
+/home/blue/SSL/x509/ca.crt: PEM certificate
+Clé privée (chemin absolu) : /home/blue/SSL/x509/xkey
+/home/blue/SSL/x509/xkey: PEM RSA private key
+Clé publique (chemin absolu) : /home/blue/SSL/x509/xkey.pub
+
+Veuillez vérifier qu'il s'agit bien de la clé PUBLIQUE du CA
+
+/home/blue/SSL/x509/xkey.pub: ASCII text
+
+Durée de validité du certificat (nombre de jours) : 512
+
+PING jupiter (192.168.1.17) 56(84) bytes of data.
+64 bytes from jupiter (192.168.1.17): icmp_seq=1 ttl=64 time=0.211 ms
+64 bytes from jupiter (192.168.1.17): icmp_seq=2 ttl=64 time=0.277 ms
+
+--- jupiter ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1027ms
+rtt min/avg/max/mdev = 0.211/0.244/0.277/0.033 ms
+
+	CRÉATION CERTIFICAT : jupiter
+
+Generating RSA private key, 2048 bit long modulus
+..........................+++
+....................................................................+++
+e is 65537 (0x10001)
+writing RSA key
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:FR
+State or Province Name (full name) []:IDF
+Locality Name (eg, city) [Default City]:Paris
+Organization Name (eg, company) [Default Company Ltd]:planetpixel
+Organizational Unit Name (eg, section) []:jupiter
+Common Name (eg, your name or your server's hostname) []:jupiter
+Email Address []:jupiter@planet.org
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+Signature ok
+subject=/C=FR/ST=IDF/L=Paris/O=planetpixel/OU=jupiter/CN=jupiter/emailAddress=jupiter@planet.org
+Getting CA Private Key
+Enter pass phrase for /home/blue/SSL/x509/xkey:
+
+	CERTIFICAT DE jupiter CRÉÉ AVEC SUCCÈS
+
+Envoi sécurisé des données (certificat et clés) vers jupiter (O/N) ? o
+Port ssh : 22
+root@jupiter's password: 
+root@jupiter's password: 
+xkey.pub                                      100%  800     0.8KB/s   00:00    
+jupiter.crt                                   100% 1635     1.6KB/s   00:00    
+jupiter.pem                                   100% 1679     1.6KB/s   00:00    
+jupiter.pub                                   100%  451     0.4KB/s   00:00    
+
+Données envoyées.
+
+PING triton (192.168.100.30) 56(84) bytes of data.
+64 bytes from triton (192.168.100.30): icmp_seq=1 ttl=63 time=2.72 ms
+64 bytes from triton (192.168.100.30): icmp_seq=2 ttl=63 time=0.563 ms
+
+--- triton ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1000ms
+rtt min/avg/max/mdev = 0.563/1.641/2.720/1.079 ms
+
+	CRÉATION CERTIFICAT : triton
+
+Generating RSA private key, 2048 bit long modulus
+................................................................+++
+..............................................................................+++
+e is 65537 (0x10001)
+writing RSA key
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:FR
+State or Province Name (full name) []:IDF
+Locality Name (eg, city) [Default City]:Paris
+Organization Name (eg, company) [Default Company Ltd]:planetpixel
+Organizational Unit Name (eg, section) []:triton
+Common Name (eg, your name or your server's hostname) []:triton
+Email Address []:triton@planet.org
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+Signature ok
+subject=/C=FR/ST=IDF/L=Paris/O=planetpixel/OU=triton/CN=triton/emailAddress=triton@planet.org
+Getting CA Private Key
+Enter pass phrase for /home/blue/SSL/x509/xkey:
+
+	CERTIFICAT DE triton CRÉÉ AVEC SUCCÈS
+
+Envoi sécurisé des données (certificat et clés) vers triton (O/N) ? o
+Port ssh : 22
+root@triton's password: 
+root@triton's password: 
+xkey.pub                                      100%  800     0.8KB/s   00:00    
+triton.crt                                    100% 1631     1.6KB/s   00:00    
+triton.pem                                    100% 1675     1.6KB/s   00:00    
+triton.pub                                    100%  451     0.4KB/s   00:00    
+
+Données envoyées.
+
+PING io (192.168.50.40) 56(84) bytes of data.
+64 bytes from io (192.168.50.40): icmp_seq=1 ttl=63 time=0.407 ms
+64 bytes from io (192.168.50.40): icmp_seq=2 ttl=63 time=0.595 ms
+
+--- io ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1026ms
+rtt min/avg/max/mdev = 0.407/0.501/0.595/0.094 ms
+
+	CRÉATION CERTIFICAT : io
+
+io.pem: Permission denied
+139888930793336:error:0200100D:system library:fopen:Permission denied:bss_file.c:402:fopen('io.pem','w')
+139888930793336:error:20074002:BIO routines:FILE_CTRL:system lib:bss_file.c:404:
+writing RSA key
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:FR
+State or Province Name (full name) []:IDF
+Locality Name (eg, city) [Default City]:Paris
+Organization Name (eg, company) [Default Company Ltd]:planetpixel
+Organizational Unit Name (eg, section) []:io
+Common Name (eg, your name or your server's hostname) []:io
+Email Address []:io@planet.org
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+Signature ok
+subject=/C=FR/ST=IDF/L=Paris/O=planetpixel/OU=io/CN=io/emailAddress=io@planet.org
+Getting CA Private Key
+Enter pass phrase for /home/blue/SSL/x509/xkey:
+
+	CERTIFICAT DE io CRÉÉ AVEC SUCCÈS
+
+Envoi sécurisé des données (certificat et clés) vers io (O/N) ? o
+Port ssh : 22
+root@io's password: 
+root@io's password: 
+xkey.pub                                      100%  800     0.8KB/s   00:00    
+io.crt                                        100% 1614     1.6KB/s   00:00    
+io.pem                                        100% 1679     1.6KB/s   00:00    
+io.pub                                        100%  451     0.4KB/s   00:00    
+
+Données envoyées.
+
+blue@saturn:~/SSL/x509/clients-$ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################
+# REPRISE OPENSSL # 
+###################
+
+# CHIFFREMENT SYMÉTRIQUE #
+
+
+# CHIFFRER UN FICHIER
+
+blue@saturn:~/SSL-$ openssl des3 -in users -out users2 -k mdp
+
+blue@saturn:~/SSL-$ file users2
+users2: data
+blue@saturn:~/SSL-$ 
+
+# DECHIFFRER UN FICHIER
+
+blue@saturn:~/SSL-$ openssl des3 -d -in users2 -out users3 -k mdp
+blue@saturn:~/SSL-$ cat users3
+Apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+truc:tWIF3dHm2Zry2
+blue@saturn:~/SSL-$ 
+
+
+# on chiffre en rc4, puis on retourne le fichier en format base64 (donc en ASCII)
+
+blue@saturn:~/SSL-$ openssl rc4 -in users -out users.dat64 -k mdp -a
+blue@saturn:~/SSL-$ file users.dat64 
+users.dat64: ASCII text
+blue@saturn:~/SSL-$ cat users.dat64 
+U2FsdGVkX1/7baoTdWFy06jGhXlGL4MtFosE/ImemZwHKfu9mKzABcMzvPoC2D28
+Kt3vwjirfqQwsqB0UIYveZzsF+L4LqPbdzba
+blue@saturn:~/SSL-$ 
+
+# revient à  :
+
+blue@saturn:~/SSL-$ openssl rc4 -in users -k mdp |openssl base64 -out users5
+blue@saturn:~/SSL-$ cat users5
+U2FsdGVkX18SbePnlbAZRFr5o0D9UoAB044bbJnXikyzpGkqOPt63zGDY3ePJF+4
+tGf12I0SoXOi+sS1EYd2YjENDiwky2gFkXaw
+
+
+
+
+
+# CHIFFREMENT ASYMÉTRIQUE #
+
+Rappel : Diffie-Hellman est un protocole utilisé pour chiffrer une communication, 
+	 il permet d'échanger un secret.
+	 DH ne chiffre pas de fichiers.
+
+	 
+	 
+# CHIFFRER UN FICHIER AVEC LA CLÉ PUBLIQUE ( RSAUTL -ENCRYPT ... OPTION -INKEY path/to/cle.pub -PUBIN )#
+
+blue@saturn:~/SSL-$ openssl rsautl -encrypt -in users -out users.dat -inkey keys/aeskey.pub -pubin
+
+blue@saturn:~/SSL-$ file users.dat 
+users.dat: data
+blue@saturn:~/SSL-$
+
+
+# DÉCHIFFRER CE FICHIER AVEC LA PRIVÉE ( RSAUTL -DECRYPT ... -INKEY cle.priv ) # 
+
+blue@saturn:~/SSL-$ openssl rsautl -decrypt -in users.dat -out users2 -inkey keys/aeskey
+Enter pass phrase for keys/aeskey:
+blue@saturn:~/SSL-$ 
+blue@saturn:~/SSL-$ cat users2 
+apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+blue:tWIF3dHm2Zry2
+blue@saturn:~/SSL-$ 
+
+
+
+
+
+## TRANSMISSION SÉCURISÉE D'UN FICHIER :
+					- AUTHENTIFICATION
+					- CONFIDENTIALITÉ
+					- VÉRIF DE L'INTÉGRITÉ DU FICHIER
+	
+
+# Je chiffre le fichier avec la pub de mon correspondant
+
+blue@saturn:~/SSL-$ openssl rsautl -encrypt -in users -out users.dat -inkey keys/rsakey.pub  -pubin
+blue@saturn:~/SSL-$
+
+# Je signe ce fichier crypté,
+# cad je genere un fichier .sig de ce fichier crypté en le chiffrant avec ma priv
+
+blue@saturn:~/SSL-$ openssl dgst -sha256 -sign keys/xkey -out users.sha256.sig users.dat 
+Enter pass phrase for keys/xkey:
+blue@saturn:~/SSL-$
+
+# Je lui envoie le fichier crypté (chiffré avec sa pub) et le fichier.sig (signé avec ma priv), donc la signature
+
+blue@saturn:~/SSL-$ scp users.dat users.sha256.sig root@venus:/root/datatmp
+root@venus's password: 
+users.dat                                     100%  256     0.3KB/s   00:00    
+users.sha256.sig                                 100%  512     0.5KB/s   00:00    
+blue@saturn:~/SSL-$ 
+
+# Il vérifie la signature avec ma publique
+
+root@venus -# openssl dgst -sha256 -verify keys/xkey.pub -signature users.sha256.sig users.dat
+Verified OK
+root@venus -#
+
+# Intégrité du document et authentification de la source 
+
+# Pour finir, il déchiffre le fichier crypté, grâce à sa privée
+
+root@venus -# openssl rsautl -decrypt -in users.dat -inkey keys/rsakey
+Apache:u6X9mMya4Elik
+blue:miaFgk4wB//vI
+root@venus -#
+
+
+
+
+
+
+
+
+
+
+OPENSSL(1)                                                                    OpenSSL                                                                    OPENSSL(1)
+
+NAME
+       openssl - OpenSSL command line tool
+
+SYNOPSIS
+       openssl command [ command_opts ] [ command_args ]
+
+       openssl [ list-standard-commands | list-message-digest-commands | list-cipher-commands | list-cipher-algorithms | list-message-digest-algorithms | list-
+       public-key-algorithms]
+
+       openssl no-XXX [ arbitrary options ]
+
+DESCRIPTION
+       OpenSSL is a cryptography toolkit implementing the Secure Sockets Layer (SSL v2/v3) and Transport Layer Security (TLS v1) network protocols and related
+       cryptography standards required by them.
+
+       The openssl program is a command line tool for using the various cryptography functions of OpenSSL's crypto library from the shell.  It can be used for
+
+        o  Creation and management of private keys, public keys and parameters
+        o  Public key cryptographic operations
+        o  Creation of X.509 certificates, CSRs and CRLs
+        o  Calculation of Message Digests
+        o  Encryption and Decryption with Ciphers
+        o  SSL/TLS Client and Server Tests
+        o  Handling of S/MIME signed or encrypted mail
+        o  Time Stamp requests, generation and verification
+
+COMMAND SUMMARY
+       The openssl program provides a rich variety of commands (command in the SYNOPSIS above), each of which often has a wealth of options and arguments
+       (command_opts and command_args in the SYNOPSIS).
+
+       The pseudo-commands list-standard-commands, list-message-digest-commands, and list-cipher-commands output a list (one entry per line) of the names of all
+       standard commands, message digest commands, or cipher commands, respectively, that are available in the present openssl utility.
+
+       The pseudo-commands list-cipher-algorithms and list-message-digest-algorithms list all cipher and message digest names, one entry per line. Aliases are
+       listed as:
+
+        from => to
+
+       The pseudo-command list-public-key-algorithms lists all supported public key algorithms.
+
+       The pseudo-command no-XXX tests whether a command of the specified name is available.  If no command named XXX exists, it returns 0 (success) and prints
+       no-XXX; otherwise it returns 1 and prints XXX.  In both cases, the output goes to stdout and nothing is printed to stderr.  Additional command line
+       arguments are always ignored.  Since for each cipher there is a command of the same name, this provides an easy way for shell scripts to test for the
+       availability of ciphers in the openssl program.  (no-XXX is not able to detect pseudo-commands such as quit, list-...-commands, or no-XXX itself.)
+
+   STANDARD COMMANDS
+       asn1parse Parse an ASN.1 sequence.
+
+       ca        Certificate Authority (CA) Management.
+
+       ciphers   Cipher Suite Description Determination.
+
+       cms       CMS (Cryptographic Message Syntax) utility
+
+       crl       Certificate Revocation List (CRL) Management.
+
+       crl2pkcs7 CRL to PKCS#7 Conversion.
+
+       dgst      Message Digest Calculation.
+
+       dh        Diffie-Hellman Parameter Management.  Obsoleted by dhparam.
+
+       dhparam   Generation and Management of Diffie-Hellman Parameters. Superseded by genpkey and pkeyparam
+
+       dsa       DSA Data Management.
+
+       dsaparam  DSA Parameter Generation and Management. Superseded by genpkey and pkeyparam
+
+       ec        EC (Elliptic curve) key processing
+
+       ecparam   EC parameter manipulation and generation
+
+       enc       Encoding with Ciphers.
+
+       engine    Engine (loadble module) information and manipulation.
+
+       errstr    Error Number to Error String Conversion.
+
+       gendh     Generation of Diffie-Hellman Parameters.  Obsoleted by dhparam.
+
+       gendsa    Generation of DSA Private Key from Parameters. Superseded by genpkey and pkey
+
+       genpkey   Generation of Private Key or Parameters.
+
+       genrsa    Generation of RSA Private Key. Superceded by genpkey.
+
+       nseq      Create or examine a netscape certificate sequence
+
+       ocsp      Online Certificate Status Protocol utility.
+
+       passwd    Generation of hashed passwords.
+
+       pkcs12    PKCS#12 Data Management.
+
+       pkcs7     PKCS#7 Data Management.
+
+       pkey      Public and private key management.
+
+       pkeyparam Public key algorithm parameter management.
+
+       pkeyutl   Public key algorithm cryptographic operation utility.
+
+       rand      Generate pseudo-random bytes.
+
+       req       PKCS#10 X.509 Certificate Signing Request (CSR) Management.
+
+       rsa       RSA key management.
+
+       rsautl    RSA utility for signing, verification, encryption, and decryption. Superseded by  pkeyutl
+
+       s_client  This implements a generic SSL/TLS client which can establish a transparent connection to a remote server speaking SSL/TLS. It's intended for
+                 testing purposes only and provides only rudimentary interface functionality but internally uses mostly all functionality of the OpenSSL ssl
+                 library.
+
+       s_server  This implements a generic SSL/TLS server which accepts connections from remote clients speaking SSL/TLS. It's intended for testing purposes only
+                 and provides only rudimentary interface functionality but internally uses mostly all functionality of the OpenSSL ssl library.  It provides both
+                 an own command line oriented protocol for testing SSL functions and a simple HTTP response facility to emulate an SSL/TLS-aware webserver.
+
+       s_time    SSL Connection Timer.
+
+       sess_id   SSL Session Data Management.
+
+       smime     S/MIME mail processing.
+
+       speed     Algorithm Speed Measurement.
+
+       spkac     SPKAC printing and generating utility
+
+       ts        Time Stamping Authority tool (client/server)
+
+       verify    X.509 Certificate Verification.
+
+       version   OpenSSL Version Information.
+
+       x509      X.509 Certificate Data Management.
+
+   MESSAGE DIGEST COMMANDS
+       md2       MD2 Digest
+
+       md5       MD5 Digest
+
+       mdc2      MDC2 Digest
+
+       rmd160    RMD-160 Digest
+
+       sha       SHA Digest
+
+       sha1      SHA-1 Digest
+
+       sha224    SHA-224 Digest
+
+       sha256    SHA-256 Digest
+
+       sha384    SHA-384 Digest
+
+       sha512    SHA-512 Digest
+
+   ENCODING AND CIPHER COMMANDS
+       base64    Base64 Encoding
+
+       bf bf-cbc bf-cfb bf-ecb bf-ofb
+                 Blowfish Cipher
+
+       cast cast-cbc
+                 CAST Cipher
+
+       cast5-cbc cast5-cfb cast5-ecb cast5-ofb
+                 CAST5 Cipher
+
+       des des-cbc des-cfb des-ecb des-ede des-ede-cbc des-ede-cfb des-ede-ofb des-ofb
+                 DES Cipher
+
+       des3 desx des-ede3 des-ede3-cbc des-ede3-cfb des-ede3-ofb
+                 Triple-DES Cipher
+
+       idea idea-cbc idea-cfb idea-ecb idea-ofb
+                 IDEA Cipher
+
+       rc2 rc2-cbc rc2-cfb rc2-ecb rc2-ofb
+                 RC2 Cipher
+
+       rc4       RC4 Cipher
+
+       rc5 rc5-cbc rc5-cfb rc5-ecb rc5-ofb
+                 RC5 Cipher
+
+PASS PHRASE ARGUMENTS
+       Several commands accept password arguments, typically using -passin and -passout for input and output passwords respectively. These allow the password to be
+       obtained from a variety of sources. Both of these options take a single argument whose format is described below. If no password argument is given and a
+       password is required then the user is prompted to enter one: this will typically be read from the current terminal with echoing turned off.
+
+       pass:password
+                 the actual password is password. Since the password is visible to utilities (like 'ps' under Unix) this form should only be used where security is
+                 not important.
+
+       env:var   obtain the password from the environment variable var. Since the environment of other processes is visible on certain platforms (e.g. ps under
+                 certain Unix OSes) this option should be used with caution.
+
+       file:pathname
+                 the first line of pathname is the password. If the same pathname argument is supplied to -passin and -passout arguments then the first line will
+                 be used for the input password and the next line for the output password. pathname need not refer to a regular file: it could for example refer to
+                 a device or named pipe.
+
+       fd:number read the password from the file descriptor number. This can be used to send the data via a pipe for example.
+
+       stdin     read the password from standard input.
+
+SEE ALSO
+       asn1parse(1), ca(1), config(5), crl(1), crl2pkcs7(1), dgst(1), dhparam(1), dsa(1), dsaparam(1), enc(1), gendsa(1), genpkey(1), genrsa(1), nseq(1),
+       openssl(1), sslpasswd(1), pkcs12(1), pkcs7(1), pkcs8(1), sslrand(1), req(1), rsa(1), rsautl(1), s_client(1), s_server(1), s_time(1), smime(1), spkac(1),
+       verify(1), version(1), x509(1), crypto(3), ssl(3), x509v3_config(5)
+
+HISTORY
+       The openssl(1) document appeared in OpenSSL 0.9.2.  The list-XXX-commands pseudo-commands were added in OpenSSL 0.9.3; The list-XXX-algorithms pseudo-
+       commands were added in OpenSSL 1.0.0; the no-XXX pseudo-commands were added in OpenSSL 0.9.5a.  For notes on the availability of other commands, see their
+       individual manual pages.
+
+1.0.2k                                                                       2017-02-06                                                                  OPENSSL(1)
