@@ -111,13 +111,13 @@ do
       Efile $pub && continue
       read -p "File to verify : " fic
       Efile $fic && continue
-	  for i in md5 sha1 sha256 sha512
-	  do
-		echo -e "\nTrying with hash function $i ..."
-		openssl dgst -$i -verify $pub -signature $sig $fic 
-		[[ $? == 0 ]] && printf "(Hash algorithm : $i)\n" && break
-	  done
-	  continue
+      for i in md5 sha1 sha256 sha512
+      do
+        echo -e "\nTrying with hash function $i ..."
+        openssl dgst -$i -verify $pub -signature $sig $fic 
+        [[ $? == 0 ]] && printf "(Hash algorithm : $i)\n" && break
+      done
+      continue
       ;;
     2) echo -e "\n$c\n"
       read -p "Private key : " pem
@@ -133,7 +133,7 @@ do
      3) echo -e "\n$c\n"
       read -p "File to encrypt : " fic
       Efile $fic && continue
-	  Sfile $fic && continue
+      Sfile $fic && continue
       echo "Password : "
       stty -echo
       read pswd
@@ -142,38 +142,38 @@ do
       [[ $a == "Quit" ]] && continue
       [[ $a == "3des" ]] && a="des3"
       echo "Cypher : $a"
-	  read -p "Return an ASCII file (base64) (Y/n) ? : " rep
-	  case $rep in
-		[Nn]*) openssl $a -in $fic -out $fic.$a -k $pswd 2>/dev/null
-			   [[ ! -f $fic.$a ]] && echo $a : algorithm not supported in this version. && continue 
-				;;
-			*) openssl $a -in $fic -out $fic.$a.b64 -k $pswd -a 2>/dev/null
-	  		   [[ ! -f $fic.$a.b64 ]] && echo $a : algorithm not supported in this version. && continue 
-				;;
-	  esac
+      read -p "Return an ASCII file (base64) (Y/n) ? : " rep
+      case $rep in
+        [Nn]*) openssl $a -in $fic -out $fic.$a -k $pswd 2>/dev/null
+	       [[ ! -f $fic.$a ]] && echo $a : algorithm not supported in this version. && continue 
+	    ;;
+            *) openssl $a -in $fic -out $fic.$a.b64 -k $pswd -a 2>/dev/null
+               [[ ! -f $fic.$a.b64 ]] && echo $a : algorithm not supported in this version. && continue 
+            ;;
+      esac
       file $fic.$a*
       echo -e "\nPress Enter\n"
       ;;
      4) echo -e "\n$c\n"
       read -p "File to decrypt : " df
       Efile $df && continue
-	  Sfile $df && continue
+      Sfile $df && continue
       Symmetriccipher
       [[ $a == "Quit" ]] && continue
       [[ $a == "3des" ]] && a="des3"
-	  res=`expr "$df" : '.*b64'$`
-	  case $res in
+      res=`expr "$df" : '.*b64'$`
+      case $res in
         0) openssl $a -d -in $df 
-			;;
-		*) openssl $a -d -in $df -a 
-			;;
-	  esac
+	 ;;
+	*) openssl $a -d -in $df -a 
+	 ;;
+      esac
       echo -e "\nPress Enter\n"
       ;;
      5) echo -e "\n$c\n"
       read -p "File : " f
       Efile $f && continue
-	  Sfile $f && continue
+      Sfile $f && continue
       echo "Algorithms available : "
       select h in \
         "md5" \
@@ -198,12 +198,12 @@ do
       done
       ;;
      6) echo -e "\n$c\n"
-	  Genkeys
+      Genkeys
       ;;
      7) echo -e "\n$c\n"
       read -p "File to encrypt : " fe
       Efile $fe && continue
-	  Sfile $fe && continue
+      Sfile $fe && continue
       read -p "Public key for encryption : " pubk
       Efile $pubk && continue
       openssl rsautl -encrypt -inkey $pubk -pubin -in $fe -out $fe.dat || {
@@ -229,7 +229,7 @@ do
       ;;
      9) echo -e "\n$c\n"
       read -p "Expiration time (numbers of days) : " day
-	  Intck $day  && continue
+      Intck $day  && continue
       read -p "Certificate name <certif-name>.crt : " crt
       read -p "Private key name : " k
       openssl req -new -newkey rsa:4096 -days $day -nodes -x509 -keyout $k.pem -out $crt.crt
@@ -242,52 +242,52 @@ do
       echo
       ;;       
      10) echo -e "\n$c\n"
-       read -p "x509 certificate : " cert
-	   Efile $cert && continue
-	   Crtck $cert && continue
-       openssl x509 -in $cert -text
-	  ;;
-	 11) echo -e "\n$c\n"
-	   read -p "Generate key pair too (N/y) ? : " rep
-	   case $rep in
-		 [yY]*) Genkeys 
-				cpem=$pk.pem
-				cpub=$pk.pub
-			;;
-		 *) read -p "Client Private key : " cpem
-			Efile $cpem && continue
-			Pemck $cpem && continue
-			read -p "Client Public key : " cpub
-			Efile $cpub
-	  		;; 
-	   esac	
-	   chmod 600 $cpem
-	   read -p "Client name : " ccrt
-	   read -p "Client certificate duration (number of days) : " cdays
-	   Intck $cdays && continue
-	   read -p "CA cert : " cacrt
-	   Efile $cacrt && continue
-	   Crtck $cacrt && continue
-	   read -p "CA private key : " capem	
-	   Efile $capem && continue
-	   Pemck $capem && continue	
-	   # certif request from client pem		
-	   openssl req -new -key $cpem -out $ccrt.csr
-	   # client certif generation from CA cert and sign with CA pem
-	   openssl x509 -req -days $cdays -CAcreateserial -CA $cacrt -CAkey $capem -in $ccrt.csr -out $ccrt.crt
-	   # Rq : Pour que notre CA soit capable de générer et signer des certif clients (administrer une PKI), il faut créer les fichiers index.txt et serial (.srl) dans l'arborescence.
-	   chmod 400 $cpem
-	   file $ccrt.crt
-	  ;;
-	 12) echo -e "\n$c\n"
-	   read -p "Number of caracters : " nb
-	   Intck $nb && continue
-	   openssl rand -base64 $nb > pswd.txt
-	   echo "New password in pswd.txt"
-	   cat pswd.txt
-	  ;;
-	 13|0) exit
+      read -p "x509 certificate : " cert
+      Efile $cert && continue
+      Crtck $cert && continue
+      openssl x509 -in $cert -text
       ;;
-   esac 
+     11) echo -e "\n$c\n"
+      read -p "Generate key pair too (N/y) ? : " rep
+      case $rep in
+	[yY]*) Genkeys 
+	       cpem=$pk.pem
+	       cpub=$pk.pub
+	    ;;
+	    *) read -p "Client Private key : " cpem
+	       Efile $cpem && continue
+	       Pemck $cpem && continue
+	       read -p "Client Public key : " cpub
+	       Efile $cpub
+	    ;; 
+      esac	
+      chmod 600 $cpem
+      read -p "Client name : " ccrt
+      read -p "Client certificate duration (number of days) : " cdays
+      Intck $cdays && continue
+      read -p "CA cert : " cacrt
+      Efile $cacrt && continue
+      Crtck $cacrt && continue
+      read -p "CA private key : " capem	
+      Efile $capem && continue
+      Pemck $capem && continue	
+      # certif request from client pem		
+      openssl req -new -key $cpem -out $ccrt.csr
+      # client certif generation from CA cert and sign with CA pem
+      openssl x509 -req -days $cdays -CAcreateserial -CA $cacrt -CAkey $capem -in $ccrt.csr -out $ccrt.crt
+      # Rq : Pour que notre CA soit capable de générer et signer des certif clients (administrer une PKI), il faut créer les fichiers index.txt et serial (.srl) dans l'arborescence.
+      chmod 400 $cpem
+      file $ccrt.crt
+      ;;
+     12) echo -e "\n$c\n"
+      read -p "Number of caracters : " nb
+      Intck $nb && continue
+      openssl rand -base64 $nb > pswd.txt
+      echo "New password in pswd.txt"
+      cat pswd.txt
+       ;;
+      13|0) exit
+       ;;
+  esac 
 done
 exit 0
